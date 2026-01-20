@@ -7,6 +7,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 from webdriver_manager.chrome import ChromeDriverManager
 from selenium.common.exceptions import TimeoutException
+import settings
 
 
 # НАЛАШТОВАНО ДЛЯ УНИКНЕННЯ БЛОКУВАННЯ
@@ -26,6 +27,7 @@ def setup_driver():
 
     # SERVICE
     service = Service(ChromeDriverManager().install())
+    # service = Service(executable_path=str(settings.CHROMEDRIVER_PATH))
 
     # DRIVER
     driver = webdriver.Chrome(service=service, options=options)

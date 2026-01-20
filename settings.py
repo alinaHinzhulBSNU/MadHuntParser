@@ -1,3 +1,7 @@
+from pathlib import Path
+import sys
+
+
 XMLS = [
     {
         "name": "ibis",
@@ -79,10 +83,27 @@ URLS = [
     },
 ]
 
-WEB_RESULT_PATH = "DATA/raw_from_web/"
-XML_RESULT_PATH = "DATA/results/from_xml.json"
-ROUTES_PATH = "ROUTES/routes.xml"
+# WEB_RESULT_PATH = "DATA/raw_from_web/"
+# XML_RESULT_PATH = "DATA/results/from_xml.json"
+# ROUTES_PATH = "ROUTES/routes.xml"
 
+BASE_DIR = (
+    Path(sys.executable).parent
+    if getattr(sys, "frozen", False)
+    else Path(__file__).parent
+)
+
+CHROMEDRIVER_PATH = BASE_DIR / "chromedriver.exe"
+
+WEB_RAW_PATH = BASE_DIR / "DATA" / "raw_from_web"
+XML_RAW_PATH = BASE_DIR / "DATA" / "raw_from_xml"
+
+WEB_RESULT_PATH = BASE_DIR / "DATA" / "results" / "from_web.json"
+XML_RESULT_PATH = BASE_DIR / "DATA" / "results" / "from_xml.json"
+
+ROUTES_PATH = BASE_DIR / "ROUTES" / "routes.xml"
+
+# URLs to discover
 '''{
     "name": "optics",
     "url": "https://www.optics-pro.com.ua/ua/",

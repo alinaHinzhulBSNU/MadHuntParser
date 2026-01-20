@@ -13,32 +13,47 @@ import warnings
 warnings.filterwarnings("ignore")
 
 
+# Перевіряємо чи створено всі необхідні директорії
+def ensure_dir(dir_path: Path):
+    dir_path.mkdir(parents=True, exist_ok=True)
+
+
+def ensure_parent_dir(file_path: Path):
+    file_path.parent.mkdir(parents=True, exist_ok=True)
+
+
 # Зберігаємо файли локально заради пришвидшення обробки в мабутньому
 def save_to_local_file(xmls):
     for xml in xmls:
         print(f"Зберігаю дані {xml["name"]}")
         response = requests.get(xml["url"], verify=False)
         response.raise_for_status()
-        with open(f"DATA/raw_from_xml/{xml["name"]}.xml", "wb") as f:
+
+        ensure_dir(settings.XML_RAW_PATH)
+        with open(f"{settings.XML_RAW_PATH}/{xml["name"]}.xml", "wb") as f:
             f.write(response.content)
 
 
 # Парсимо Yandex Market language для перетворення на придатний для OpenCart формат
 def parse_from_yandex_market_language(file):
     items = list()
-    offers = etree.parse(file).getroot().xpath("./shop/offers/offer")     
-    for offer in offers:
-        item = dict()
-        params = list()
-        for field in offer:
-            if field.tag != "param":
-                item[field.tag] = field.text
-            else:
-                param = dict()
-                param[field.attrib.get("name")] = field.text
-                params.append(param)
-        item["params"] = params
-        items.append(item)
+
+    try:
+        offers = etree.parse(file).getroot().xpath("./shop/offers/offer")     
+        for offer in offers:
+            item = dict()
+            params = list()
+            for field in offer:
+                if field.tag != "param":
+                    item[field.tag] = field.text
+                else:
+                    param = dict()
+                    param[field.attrib.get("name")] = field.text
+                    params.append(param)
+            item["params"] = params
+            items.append(item)
+    except etree.XMLSyntaxError:
+        print(f"{file} is not data file")
 
     return items
 
@@ -62,6 +77,7 @@ def get_routes():
         route[url["name"]] = list(set(product_urls))
         urls.append(route)
     
+    ensure_parent_dir(settings.ROUTES_PATH)
     parser.json_to_file(settings.ROUTES_PATH, urls)
 
 
@@ -77,8 +93,9 @@ def get_raw_html(routes, html_elements_to_parse, elem_to_click):
                 product["url"] = url
                 product["html"] = parser.stealth_data_load(URL=url, css_class=html_elements_to_parse, elem_to_click=elem_to_click)
                 products.append(product)
-
-        parser.json_to_file(f"{settings.WEB_RESULT_PATH}{site_name}.xml", products)
+        
+        ensure_dir(settings.WEB_RAW_PATH)
+        parser.json_to_file(f"{settings.WEB_RAW_PATH}{site_name}.xml", products)
 
 
 # ВИКОНАННЯ ПРОГРАМИ
@@ -87,35 +104,35 @@ if __name__ == "__main__":
 
     while(True):
         try:
-            option = input("\nОберіть опцію:\n\t1 - локальне збереження XML\n\t2 - приведення XML-вигрузок до єдиного формату\n\t3 - парсинг web-сайтів для збору даних\n\t4 - збираємо дані про товари\n\t5 - завершити\n")
+            option = input("\nОберіть опцію:\n\t1 - збереження та обробка XML\n\t2 - парсинг web-сайтів для збору даних\n\t3 - ТЕСТ (опція для розробника)\n\t4 - завершити\n")
 
-            # Завантажуємо XML-вигрузки
+            # Збираємо дані з XML
             if option == "1":
                 
+                # 1. Завантажуємо XML-вигрузки
                 print("Зберігаю XML-вигрузки локально для майбутньої обробки...\n")
                 start_time = time.time()
 
                 save_to_local_file(settings.XMLS)
 
-                end_time = time.time()
-                print(f"\nЧас збереження даних: {(end_time - start_time) / 60:.2f} хв\n")
-            
-            # Приводимо вигрузки до єдиного формату з Yandex Market language (вигрузки xml) у JSON
-            elif option == "2":
-                
+                # 2. Приводимо вигрузки до єдиного формату з Yandex Market language (вигрузки xml) у JSON
                 print("Приводжу XML-вигрузки до загального формату...\n")
-                folder_path = Path("DATA/raw_from_xml")
-                files = [p for p in folder_path.rglob('*') if p.is_file() and str(p) != "DATA/raw_from_xml/.DS_Store"]
+
+                folder_path = Path(settings.XML_RAW_PATH)
+                files = [p for p in folder_path.rglob('*') if p.is_file()]
 
                 items = list()
                 for file in files:
-                    items.extend(parse_from_yandex_market_language(file))
+                    items.extend(parse_from_yandex_market_language(str(file)))
 
+                ensure_parent_dir(settings.XML_RESULT_PATH)
                 parser.json_to_file(settings.XML_RESULT_PATH, items)
 
-            # Збираємо дані
-            elif option == "3":
-                
+                end_time = time.time()
+                print(f"\nЧас збереження даних: {(end_time - start_time) / 60:.2f} хв\n")
+            
+            # Збираємо дані з WEB
+            elif option == "2":
                 print("Вивантажую дані з магазину Control\n")
                 start_time = time.time()
 
@@ -130,16 +147,16 @@ if __name__ == "__main__":
                 get_raw_html(routes=routes, html_elements_to_parse=html_elements_to_parse, elem_to_click=elem_to_click)
 
                 # 3. Обробляємо зібрані сирі дані у відповідний формат
-                
-        
+
                 end_time = time.time()
                 print(f"\nЧас збереження даних: {(end_time - start_time) / 60:.2f} хв\n")
 
             # Збираємо "сирі" дані про товари
-            elif option == "4":
+            elif option == "3":
                 print("БЛОК ДЛЯ ТЕСТУВАННЯ")
+                
                 pass
-            elif option == "5":
+            elif option == "4":
                 break
             else:
                 print("Неіснуюча опція!")
