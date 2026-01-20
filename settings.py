@@ -69,7 +69,6 @@ XMLS = [
     },
 ]
 
-XML_RESULT_PATH = "DATA/results/from_xml.json"
 
 URLS = [
     {
@@ -80,6 +79,8 @@ URLS = [
     },
 ]
 
+WEB_RESULT_PATH = "DATA/raw_from_web/"
+XML_RESULT_PATH = "DATA/results/from_xml.json"
 ROUTES_PATH = "ROUTES/routes.xml"
 
 '''{
